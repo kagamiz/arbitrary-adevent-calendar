@@ -1,0 +1,135 @@
+version: '3'
+
+vars:
+  LOCAL_COMPOSE_FILE: docker-compose.local.yml
+  PROD_COMPOSE_FILE: docker-compose.prod.yml
+
+tasks:
+  # ローカル環境のタスク
+  docker-compose-up:local:
+    desc: ローカル環境でDocker Composeを起動
+    cmds:
+      - echo "ローカル環境でDocker Composeを起動しています..."
+      - docker-compose -f {{.LOCAL_COMPOSE_FILE}} up --build -d
+    status:
+      - docker-compose -f {{.LOCAL_COMPOSE_FILE}} ps --filter "status=running" --quiet | grep -q .
+
+  docker-compose-down:local:
+    desc: ローカル環境でDocker Composeを停止
+    cmds:
+      - echo "ローカル環境でDocker Composeを停止しています..."
+      - docker-compose -f {{.LOCAL_COMPOSE_FILE}} down
+
+  docker-compose-logs:local:
+    desc: ローカル環境のログを表示
+    cmds:
+      - docker-compose -f {{.LOCAL_COMPOSE_FILE}} logs -f
+
+  docker-compose-restart:local:
+    desc: ローカル環境でDocker Composeを再起動
+    cmds:
+      - task: docker-compose-down:local
+      - task: docker-compose-up:local
+
+  # 本番環境のタスク
+  docker-compose-up:prod:
+    desc: 本番環境でDocker Composeを起動
+    cmds:
+      - echo "本番環境でDocker Composeを起動しています..."
+      - docker-compose -f {{.PROD_COMPOSE_FILE}} up --build -d
+    status:
+      - docker-compose -f {{.PROD_COMPOSE_FILE}} ps --filter "status=running" --quiet | grep -q .
+
+  docker-compose-down:prod:
+    desc: 本番環境でDocker Composeを停止
+    cmds:
+      - echo "本番環境でDocker Composeを停止しています..."
+      - docker-compose -f {{.PROD_COMPOSE_FILE}} down
+
+  docker-compose-logs:prod:
+    desc: 本番環境のログを表示
+    cmds:
+      - docker-compose -f {{.PROD_COMPOSE_FILE}} logs -f
+
+  docker-compose-restart:prod:
+    desc: 本番環境でDocker Composeを再起動
+    cmds:
+      - task: docker-compose-down:prod
+      - task: docker-compose-up:prod
+
+  # 共通タスク
+  docker-compose-status:
+    desc: 全環境のDocker Composeステータスを表示
+    cmds:
+      - echo "=== ローカル環境 ==="
+      - docker-compose -f {{.LOCAL_COMPOSE_FILE}} ps
+      - echo ""
+      - echo "=== 本番環境 ==="
+      - docker-compose -f {{.PROD_COMPOSE_FILE}} ps
+
+  docker-compose-clean:
+    desc: 全環境のDocker Composeを停止し、ボリュームも削除
+    cmds:
+      - echo "全環境のDocker Composeを停止し、ボリュームを削除しています..."
+      - task: docker-compose-down:local
+      - task: docker-compose-down:prod
+      - docker volume prune -f
+
+  # 開発用タスク
+  dev:setup:
+    desc: 開発環境のセットアップ
+    cmds:
+      - echo "開発環境のセットアップを開始..."
+      - |
+        if [ ! -f .env ]; then
+          cp env.example .env
+          echo ".envファイルを作成しました。必要に応じて編集してください。"
+        fi
+      - echo "Taskのインストールを確認..."
+      - task --version || (echo "Taskがインストールされていません。./setup.sh を実行してください。" && exit 1)
+      - echo "セットアップ完了！"
+
+  dev:start:
+    desc: 開発環境を起動（セットアップ + ローカル起動）
+    cmds:
+      - task: dev:setup
+      - task: docker-compose-up:local
+      - echo "開発環境が起動しました！"
+      - |
+        echo "フロントエンド: http://localhost:3000"
+      - |
+        echo "バックエンドAPI: http://localhost:8000"
+
+  dev:stop:
+    desc: 開発環境を停止
+    cmds:
+      - task: docker-compose-down:local
+      - echo "開発環境を停止しました。"
+
+  # ヘルプタスク
+  help:
+    desc: 利用可能なタスクを表示
+    cmds:
+      - echo "利用可能なタスク:"
+      - echo ""
+      - echo "ローカル環境:"
+      - echo "  task docker-compose-up:local     - ローカル環境で起動"
+      - echo "  task docker-compose-down:local   - ローカル環境で停止"
+      - echo "  task docker-compose-logs:local   - ローカル環境のログ表示"
+      - echo "  task docker-compose-restart:local - ローカル環境で再起動"
+      - echo ""
+      - echo "本番環境:"
+      - echo "  task docker-compose-up:prod      - 本番環境で起動"
+      - echo "  task docker-compose-down:prod    - 本番環境で停止"
+      - echo "  task docker-compose-logs:prod    - 本番環境のログ表示"
+      - echo "  task docker-compose-restart:prod - 本番環境で再起動"
+      - echo ""
+      - echo "開発用:"
+      - echo "  task dev:setup                   - 開発環境セットアップ"
+      - echo "  task dev:start                   - 開発環境起動"
+      - echo "  task dev:stop                    - 開発環境停止"
+      - echo ""
+      - echo "その他:"
+      - echo "  task docker-compose-status       - 全環境のステータス表示"
+      - echo "  task docker-compose-clean        - 全環境を停止・クリーンアップ"
+      - echo "  task help                        - このヘルプを表示" 
