@@ -8,11 +8,6 @@ services:
     expose:
       - "8000"
     env_file: .env
-    environment:
-      - VIRTUAL_HOST=jb-advcal2025-17th-anniv.miz-miz.biz
-      - VIRTUAL_PORT=8000
-      - LETSENCRYPT_HOST=jb-advcal2025-17th-anniv.miz-miz.biz
-      - LETSENCRYPT_EMAIL=admin@miz-miz.biz
     volumes:
       - advent_calendar_data:/app/data
     networks:
