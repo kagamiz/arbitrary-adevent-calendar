@@ -67,7 +67,7 @@ async def mock_auth_callback(db: Session = Depends(get_db)):
     """ローカル環境用のモック認証"""
     if os.getenv("ENVIRONMENT") != "local":
         raise HTTPException(status_code=404, detail="Not found")
-    
+
     # モックユーザーを作成または取得
     user = db.query(User).filter(User.username == "mock_user").first()
     if not user:
@@ -121,7 +121,7 @@ async def mock_auth_callback2(db: Session = Depends(get_db)):
 async def auth_callback(code: str, db: Session = Depends(get_db)):
     """X OAuth認証コールバック"""
     print(f"Debug: Auth callback received with code: {code}")
-    
+
     # 認証コードをアクセストークンと交換
     token_data = await exchange_code_for_token(code)
     if not token_data:
@@ -129,7 +129,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="認証に失敗しました")
 
     print(f"Debug: Token exchange successful: {token_data}")
-    
+
     # X APIからユーザー情報を取得
     user_info = await get_x_user_info(token_data["access_token"])
     if not user_info:
@@ -137,7 +137,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="ユーザー情報の取得に失敗しました")
 
     print(f"Debug: User info retrieved: {user_info}")
-    
+
     # ユーザーをデータベースに保存または更新
     user = db.query(User).filter(User.username == user_info["username"]).first()
     if not user:
@@ -156,8 +156,14 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
     else:
         # 既存ユーザーの管理者権限を更新
         is_admin = is_admin_user(user_info["username"])
-        if user.is_admin != is_admin:
+        if (
+            user.is_admin != is_admin
+            or user.profile_image_url != user_info.get("profile_image_url")
+            or user.display_name != user_info.get("name")
+        ):
             user.is_admin = is_admin
+            user.profile_image_url = user_info.get("profile_image_url")
+            user.display_name = user_info.get("name")
             db.commit()
             db.refresh(user)
         print(f"Debug: Existing user updated: {user.username}")
@@ -169,7 +175,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
     # フロントエンドにリダイレクト
     redirect_url = f"{settings.frontend_url}/auth/success?token={access_token}"
     print(f"Debug: Redirecting to: {redirect_url}")
-    
+
     return RedirectResponse(url=redirect_url)
 
 
@@ -194,7 +200,7 @@ def get_calendar_info():
         start_date=str(start_date),
         end_date=str(end_date),
         total_days=total_days,
-        calendar_name=settings.CALENDAR_NAME
+        calendar_name=settings.CALENDAR_NAME,
     )
 
 
@@ -284,7 +290,9 @@ async def reserve_post(
     # トランザクションを使用して競合状態を防ぐ
     try:
         # 既にその日に投稿があるかチェック
-        existing_post = db.query(Post).filter(Post.post_date == post_reserve.post_date).first()
+        existing_post = (
+            db.query(Post).filter(Post.post_date == post_reserve.post_date).first()
+        )
         if existing_post:
             raise HTTPException(
                 status_code=400, detail="その日は既に投稿が予約されています"
@@ -296,7 +304,7 @@ async def reserve_post(
             title="",
             url="",
             description="",
-            user_id=current_user.id
+            user_id=current_user.id,
         )
         db.add(db_post)
         db.commit()
@@ -406,7 +414,9 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
 
 
 @app.get("/posts", response_model=List[PostSchema])
-async def get_posts(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def get_posts(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """投稿一覧を取得（認証済みユーザー用、全投稿）"""
     posts = (
         db.query(Post)
@@ -430,23 +440,26 @@ async def debug_posts(db: Session = Depends(get_db)):
         )
         .all()
     )
-    
+
     result = []
     for post in posts:
-        result.append({
-            "id": post.id,
-            "post_date": str(post.post_date),
-            "title": post.title,
-            "url": post.url,
-            "user_id": post.user_id,
-            "user_display_name": post.user.display_name if post.user else None,
-            "is_public": post.is_public,
-            "has_title": bool(post.title and post.title.strip()),
-            "has_url": bool(post.url and post.url.strip()),
-            "has_user": post.user_id is not None,
-            "date_passed": post.post_date <= datetime.now(timezone(timedelta(hours=9))).date()
-        })
-    
+        result.append(
+            {
+                "id": post.id,
+                "post_date": str(post.post_date),
+                "title": post.title,
+                "url": post.url,
+                "user_id": post.user_id,
+                "user_display_name": post.user.display_name if post.user else None,
+                "is_public": post.is_public,
+                "has_title": bool(post.title and post.title.strip()),
+                "has_url": bool(post.url and post.url.strip()),
+                "has_user": post.user_id is not None,
+                "date_passed": post.post_date
+                <= datetime.now(timezone(timedelta(hours=9))).date(),
+            }
+        )
+
     return result
 
 
@@ -465,7 +478,9 @@ async def pre_register_post(
     try:
         post_date_obj = datetime.strptime(pre_register.post_date, "%Y-%m-%d").date()
     except ValueError:
-        raise HTTPException(status_code=400, detail="日付形式が正しくありません (YYYY-MM-DD)")
+        raise HTTPException(
+            status_code=400, detail="日付形式が正しくありません (YYYY-MM-DD)"
+        )
 
     # 投稿日がカレンダー期間内かチェック
     if (
@@ -506,17 +521,13 @@ async def pre_register_post(
 
     # 空の記事情報で投稿を作成
     db_post = Post(
-        post_date=post_date_obj,
-        title="",
-        url="",
-        description="",
-        user_id=user.id
+        post_date=post_date_obj, title="", url="", description="", user_id=user.id
     )
     db.add(db_post)
     db.commit()
     db.refresh(db_post)
-    
+
     return {
         "message": f"{pre_register.post_date} の担当者として username {user.username} を登録しました",
-        "post": db_post
+        "post": db_post,
     }
