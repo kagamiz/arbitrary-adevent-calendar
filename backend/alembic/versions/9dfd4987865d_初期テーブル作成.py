@@ -29,8 +29,6 @@ def upgrade() -> None:
         sa.Column('is_admin', sa.Boolean, default=False),
         sa.Column('created_at', sa.DateTime),
     )
-    op.create_index('ix_users_username', 'users', ['username'], unique=True)
-
     op.create_table(
         'posts',
         sa.Column('id', sa.Integer, primary_key=True, index=True),
@@ -48,5 +46,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index('ix_posts_post_date', table_name='posts')
     op.drop_table('posts')
-    op.drop_index('ix_users_username', table_name='users')
     op.drop_table('users')
