@@ -40,10 +40,8 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime),
         sa.Column('updated_at', sa.DateTime),
     )
-    op.create_index('ix_posts_post_date', 'posts', ['post_date'])
     # ### end Alembic commands ###
 
 def downgrade() -> None:
-    op.drop_index('ix_posts_post_date', table_name='posts')
     op.drop_table('posts')
     op.drop_table('users')
