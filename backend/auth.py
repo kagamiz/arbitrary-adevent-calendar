@@ -189,9 +189,9 @@ async def get_x_user_info(access_token: str) -> Optional[dict]:
         "Content-Type": "application/json",
     }
     
-    # プロフィール画像を含むユーザーフィールドを指定（文字列の配列）
+    # プロフィール画像を含むユーザーフィールドを指定（カンマ区切りの文字列）
     params = {
-        "user.fields": ["id", "username", "name", "profile_image_url"]
+        "user.fields": "id,username,name,profile_image_url"
     }
     
     print(f"Debug: Getting user info with token: {access_token[:20]}...")
