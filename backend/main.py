@@ -120,16 +120,24 @@ async def mock_auth_callback2(db: Session = Depends(get_db)):
 @app.get("/auth/callback")
 async def auth_callback(code: str, db: Session = Depends(get_db)):
     """X OAuth認証コールバック"""
+    print(f"Debug: Auth callback received with code: {code}")
+    
     # 認証コードをアクセストークンと交換
     token_data = await exchange_code_for_token(code)
     if not token_data:
+        print("Debug: Token exchange failed")
         raise HTTPException(status_code=400, detail="認証に失敗しました")
 
+    print(f"Debug: Token exchange successful: {token_data}")
+    
     # X APIからユーザー情報を取得
     user_info = await get_x_user_info(token_data["access_token"])
     if not user_info:
+        print("Debug: Failed to get user info")
         raise HTTPException(status_code=400, detail="ユーザー情報の取得に失敗しました")
 
+    print(f"Debug: User info retrieved: {user_info}")
+    
     # ユーザーをデータベースに保存または更新
     user = db.query(User).filter(User.username == user_info["username"]).first()
     if not user:
@@ -144,6 +152,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
         db.refresh(user)
+        print(f"Debug: New user created: {user.username}")
     else:
         # 既存ユーザーの管理者権限を更新
         is_admin = is_admin_user(user_info["username"])
@@ -151,14 +160,17 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
             user.is_admin = is_admin
             db.commit()
             db.refresh(user)
+        print(f"Debug: Existing user updated: {user.username}")
 
     # JWTトークンを生成
     access_token = create_access_token(data={"sub": user.username})
+    print(f"Debug: JWT token generated for user: {user.username}")
 
     # フロントエンドにリダイレクト
-    return RedirectResponse(
-        url=f"{settings.frontend_url}/auth/success?token={access_token}"
-    )
+    redirect_url = f"{settings.frontend_url}/auth/success?token={access_token}"
+    print(f"Debug: Redirecting to: {redirect_url}")
+    
+    return RedirectResponse(url=redirect_url)
 
 
 @app.get("/debug/config")
