@@ -184,20 +184,45 @@ async def exchange_code_for_token(code: str) -> Optional[dict]:
 async def get_x_user_info(access_token: str) -> Optional[dict]:
     """X APIからユーザー情報を取得"""
     user_url = "https://api.twitter.com/2/users/me"
-    headers = {"Authorization": f"Bearer {access_token}"}
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    
+    # プロフィール画像を含むユーザーフィールドを指定（文字列の配列）
+    params = {
+        "user.fields": ["id", "username", "name", "profile_image_url"]
+    }
+    
+    print(f"Debug: Getting user info with token: {access_token[:20]}...")
+    print(f"Debug: User info request URL: {user_url}")
+    print(f"Debug: User info request params: {params}")
     
     async with httpx.AsyncClient() as client:
-        response = await client.get(user_url, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            user_data = data.get("data", {})
-            return {
-                "id": user_data.get("id"),
-                "username": user_data.get("username"),
-                "name": user_data.get("name"),
-                "profile_image_url": user_data.get("profile_image_url"),
-            }
-        return None
+        try:
+            response = await client.get(user_url, headers=headers, params=params)
+            print(f"Debug: User info response status: {response.status_code}")
+            print(f"Debug: User info response body: {response.text}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                user_data = data.get("data", {})
+                
+                user_info = {
+                    "id": user_data.get("id"),
+                    "username": user_data.get("username"),
+                    "name": user_data.get("name"),
+                    "profile_image_url": user_data.get("profile_image_url"),
+                }
+                
+                print(f"Debug: Parsed user info: {user_info}")
+                return user_info
+            else:
+                print(f"Debug: Failed to get user info with status {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"Debug: Exception during user info retrieval: {e}")
+            return None
 
 
 def is_admin_user(username: str) -> bool:
