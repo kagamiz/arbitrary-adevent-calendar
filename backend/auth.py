@@ -142,12 +142,19 @@ async def exchange_code_for_token(code: str) -> Optional[dict]:
     
     token_url = "https://api.twitter.com/2/oauth2/token"
     
+    # Basic認証ヘッダーを生成
+    credentials = f"{settings.x_client_id}:{settings.x_client_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+    
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    
     data = {
         "grant_type": "authorization_code",
         "code": code,
         "redirect_uri": settings.x_redirect_uri,
-        "client_id": settings.x_client_id,
-        "client_secret": settings.x_client_secret,
         "code_verifier": current_code_verifier,
     }
     
@@ -155,10 +162,11 @@ async def exchange_code_for_token(code: str) -> Optional[dict]:
     print(f"Debug: Redirect URI: {settings.x_redirect_uri}")
     print(f"Debug: Client ID: {settings.x_client_id}")
     print(f"Debug: Code verifier: {current_code_verifier}")
+    print(f"Debug: Authorization header: Basic {encoded_credentials[:10]}...")
     
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(token_url, data=data)
+            response = await client.post(token_url, data=data, headers=headers)
             print(f"Debug: Response status: {response.status_code}")
             print(f"Debug: Response headers: {response.headers}")
             print(f"Debug: Response body: {response.text}")
