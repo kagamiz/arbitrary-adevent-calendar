@@ -20,7 +20,7 @@ class ApiClient {
         endpoint: string,
         options: RequestInit = {}
     ): Promise<T> {
-        const url = `${this.baseUrl}${endpoint}`;
+        const url = `${this.baseUrl}/api${endpoint}`;
         const token = localStorage.getItem('access_token');
 
         const config: RequestInit = {
