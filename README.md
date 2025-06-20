@@ -191,3 +191,25 @@ npm run dev
 ## ライセンス
 
 MIT License 
+
+## データベース初期化・マイグレーション
+
+本番・新規環境では、DBファイル（backend/advent_calendar.db）が存在しない状態で下記コマンドを実行してください。
+
+```bash
+# 既存のDBファイルがある場合は削除（初回セットアップ時のみ）
+rm -f backend/advent_calendar.db
+
+# マイグレーション適用（テーブル作成）
+docker compose -f docker-compose.local.yml exec backend uv run alembic upgrade head
+```
+
+- これにより、SQLAlchemyモデルに基づいたテーブルが自動作成されます。
+- モデル変更時は、
+
+```bash
+docker compose -f docker-compose.local.yml exec backend uv run alembic revision --autogenerate -m "変更内容の説明"
+docker compose -f docker-compose.local.yml exec backend uv run alembic upgrade head
+```
+
+- でマイグレーションを管理できます。
