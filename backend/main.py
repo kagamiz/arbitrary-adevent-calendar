@@ -41,7 +41,7 @@ app = FastAPI(
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[settings.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -157,7 +157,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
 
     # フロントエンドにリダイレクト
     return RedirectResponse(
-        url=f"http://localhost:3000/auth/success?token={access_token}"
+        url=f"{settings.frontend_url}/auth/success?token={access_token}"
     )
 
 

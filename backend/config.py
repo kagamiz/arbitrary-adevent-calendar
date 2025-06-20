@@ -19,8 +19,11 @@ class Settings(BaseSettings):
     # X OAuth設定
     x_client_id: str = ""
     x_client_secret: str = ""
-    x_redirect_uri: str = "http://localhost:8000/auth/callback"
+    x_redirect_uri: str = ""
     x_bearer_token: str = ""
+    
+    # フロントエンドURL設定
+    frontend_url: str = ""
     
     # カレンダー設定（環境変数から読み込み）
     calendar_start_date: date = date(2024, 12, 1)
@@ -39,6 +42,8 @@ class Settings(BaseSettings):
             "calendar_start_date": {"env": "CALENDAR_START_DATE"},
             "calendar_end_date": {"env": "CALENDAR_END_DATE"},
             "admin_usernames": {"env": "ADMIN_USERNAMES"},
+            "x_redirect_uri": {"env": "X_REDIRECT_URI"},
+            "frontend_url": {"env": "FRONTEND_URL"},
         }
     
     @field_validator("calendar_start_date", "calendar_end_date", mode="before")
@@ -48,6 +53,32 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return date.fromisoformat(v)
         return v
+    
+    @field_validator("x_redirect_uri", mode="before")
+    @classmethod
+    def set_default_redirect_uri(cls, v):
+        """環境に応じてデフォルトのリダイレクトURIを設定"""
+        if v:
+            return v
+        
+        import os
+        if os.getenv("ENVIRONMENT") == "production":
+            return "https://example.com/api/auth/callback"
+        else:
+            return "http://localhost:8000/auth/callback"
+    
+    @field_validator("frontend_url", mode="before")
+    @classmethod
+    def set_default_frontend_url(cls, v):
+        """環境に応じてデフォルトのフロントエンドURLを設定"""
+        if v:
+            return v
+        
+        import os
+        if os.getenv("ENVIRONMENT") == "production":
+            return "https://example.com"
+        else:
+            return "http://localhost:3000"
     
     @property
     def admin_user_id_list(self) -> List[str]:

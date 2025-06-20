@@ -146,8 +146,9 @@ task help                        # ヘルプを表示
 | `SECRET_KEY` | JWT署名用の秘密鍵 | `your-secret-key-here` |
 | `X_CLIENT_ID` | X OAuth クライアントID | `your-x-client-id` |
 | `X_CLIENT_SECRET` | X OAuth クライアントシークレット | `your-x-client-secret` |
-| `X_REDIRECT_URI` | X OAuth リダイレクトURI | `https://sample-domain.com/auth/callback` |
+| `X_REDIRECT_URI` | X OAuth リダイレクトURI | `https://sample-domain.com/api/auth/callback` |
 | `X_BEARER_TOKEN` | X API Bearer Token（事前登録用） | `your-x-bearer-token` |
+| `FRONTEND_URL` | フロントエンドのベースURL | `https://sample-domain.com` |
 | `CALENDAR_NAME` | カレンダー名 | `arbitrary-advent-calendar` |
 | `CALENDAR_START_DATE` | カレンダー開始日 | `2024-12-01` |
 | `CALENDAR_END_DATE` | カレンダー終了日 | `2024-12-25` |
@@ -158,9 +159,22 @@ task help                        # ヘルプを表示
 
 1. [X Developer Portal](https://developer.twitter.com/) でアプリケーションを作成
 2. OAuth 2.0設定で以下を設定：
-   - Callback URL: `https://sample-domain.com/auth/callback`
+   - Callback URL: `https://sample-domain.com/api/auth/callback`
    - App permissions: Read
 3. 取得したClient IDとClient Secretを環境変数に設定
+
+### 本番環境での設定例
+
+本番環境では、以下の環境変数を適切に設定してください：
+
+```env
+ENVIRONMENT=production
+X_CLIENT_ID=your-actual-client-id
+X_CLIENT_SECRET=your-actual-client-secret
+X_REDIRECT_URI=https://your-domain.com/api/auth/callback
+FRONTEND_URL=https://your-domain.com
+VITE_API_BASE_URL=https://your-domain.com
+```
 
 ### 事前登録機能用の設定
 
