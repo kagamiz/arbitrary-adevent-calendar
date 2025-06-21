@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  backend:
+  advent-calendar-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -15,18 +15,18 @@ services:
       - advent-network
     restart: unless-stopped
 
-  frontend:
+  advent-calendar-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_FRONTEND_URL: ${FRONTEND_URL}
         VITE_CALENDAR_NAME: ${VITE_CALENDAR_NAME}
     ports:
       - "3000:80"
     env_file: .env
     depends_on:
-      - backend
+      - advent-calendar-backend
     networks:
       - advent-network
     restart: unless-stopped

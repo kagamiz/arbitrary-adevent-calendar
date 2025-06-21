@@ -148,12 +148,12 @@ task help                        # ヘルプを表示
 | `X_CLIENT_SECRET` | X OAuth クライアントシークレット | `your-x-client-secret` |
 | `X_REDIRECT_URI` | X OAuth リダイレクトURI | `https://sample-domain.com/api/auth/callback` |
 | `X_BEARER_TOKEN` | X API Bearer Token（事前登録用） | `your-x-bearer-token` |
-| `FRONTEND_URL` | フロントエンドのベースURL | `https://sample-domain.com` |
+| `FRONTEND_URL` | フロントエンドのベースURL（APIとフロントエンド共通） | `https://sample-domain.com` |
 | `CALENDAR_NAME` | カレンダー名 | `arbitrary-advent-calendar` |
 | `CALENDAR_START_DATE` | カレンダー開始日 | `2024-12-01` |
 | `CALENDAR_END_DATE` | カレンダー終了日 | `2024-12-25` |
 | `ADMIN_USERNAMES` | 管理者ユーザー名（カンマ区切り、usernameで指定） | `admin1,admin2` |
-| `VITE_API_BASE_URL` | フロントエンド用APIベースURL | `https://sample-domain.com` |
+| `VITE_CALENDAR_NAME` | フロントエンド用カレンダー名 | `arbitrary-advent-calendar` |
 
 ## X OAuth設定
 
@@ -173,7 +173,6 @@ X_CLIENT_ID=your-actual-client-id
 X_CLIENT_SECRET=your-actual-client-secret
 X_REDIRECT_URI=https://your-domain.com/api/auth/callback
 FRONTEND_URL=https://your-domain.com
-VITE_API_BASE_URL=https://your-domain.com
 ```
 
 ### 事前登録機能用の設定

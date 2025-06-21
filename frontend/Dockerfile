@@ -13,9 +13,9 @@ RUN npm ci
 COPY . .
 
 # 環境変数をビルド時に設定
-ARG VITE_API_BASE_URL
+ARG VITE_FRONTEND_URL
 ARG VITE_CALENDAR_NAME
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_FRONTEND_URL=$VITE_FRONTEND_URL
 ENV VITE_CALENDAR_NAME=$VITE_CALENDAR_NAME
 
 # SvelteKitの設定を生成
@@ -27,8 +27,15 @@ RUN npm run build
 # 本番ステージ
 FROM nginx:alpine
 
-# nginx設定をコピー
-COPY nginx.conf /etc/nginx/nginx.conf
+# 必要なツールをインストール
+RUN apk add --no-cache bash
+
+# nginx設定テンプレートをコピー
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+
+# 起動スクリプトをコピー
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # ビルドされたファイルをコピー
 COPY --from=builder /app/build /usr/share/nginx/html
@@ -36,5 +43,5 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # ポート80を公開
 EXPOSE 80
 
-# nginxを起動
-CMD ["nginx", "-g", "daemon off;"] 
+# 起動スクリプトを実行
+ENTRYPOINT ["/docker-entrypoint.sh"] 

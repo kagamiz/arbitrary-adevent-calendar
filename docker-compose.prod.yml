@@ -9,6 +9,7 @@ services:
       - "8000"
     env_file: .env
     volumes:
+      - ./backend:/app
       - advent_calendar_data:/app/data
     networks:
       - proxy-network
@@ -19,7 +20,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_FRONTEND_URL: ${FRONTEND_URL}
         VITE_CALENDAR_NAME: ${VITE_CALENDAR_NAME}
     expose:
       - "80"

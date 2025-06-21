@@ -38,7 +38,7 @@ http {
 
     server {
         listen 80;
-        server_name jb-advcal2025-17th-anniv.miz-miz.biz;  # 本番ドメインに変更
+        server_name ${NGINX_SERVER_NAME};
 
         root /usr/share/nginx/html;
         index index.html;
@@ -69,4 +69,4 @@ http {
             try_files $uri $uri/ /index.html;
         }
     }
-}
+} 

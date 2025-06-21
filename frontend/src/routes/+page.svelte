@@ -42,7 +42,7 @@
     let menuOpen = false;
 
     onMount(async () => {
-        console.log("VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
+        console.log("VITE_FRONTEND_URL:", import.meta.env.VITE_FRONTEND_URL);
         await loadData();
     });
 
@@ -103,8 +103,8 @@
     // ローカル環境かどうかを判定
     function isLocalEnvironment(): boolean {
         return (
-            import.meta.env.VITE_API_BASE_URL?.includes("localhost") ||
-            import.meta.env.VITE_API_BASE_URL?.includes("127.0.0.1")
+            import.meta.env.VITE_FRONTEND_URL?.includes("localhost") ||
+            import.meta.env.VITE_FRONTEND_URL?.includes("127.0.0.1")
         );
     }
 
@@ -465,17 +465,8 @@
                 </h2>
                 <div class="overflow-x-auto">
                     <table
-                        class="min-w-[600px] w-full border-collapse text-xs sm:text-sm"
+                        class="min-w-[600px] w-full border-collapse text-sm sm:text-base"
                     >
-                        <thead>
-                            <tr>
-                                <th class="p-1 sm:p-2 border-b">日付</th>
-                                <th class="p-1 sm:p-2 border-b">記事タイトル</th
-                                >
-                                <th class="p-1 sm:p-2 border-b">担当者</th>
-                                <th class="p-1 sm:p-2 border-b">説明</th>
-                            </tr>
-                        </thead>
                         <tbody>
                             {#each calendarDates as dateStr, i}
                                 {@const post = $posts.find(
@@ -483,65 +474,82 @@
                                 )}
                                 <tr class="hover:bg-indigo-50">
                                     <td
-                                        class="p-1 sm:p-2 border-b whitespace-nowrap {getDateColor(
+                                        class="p-1 sm:p-2 border-b whitespace-nowrap w-16 {getDateColor(
                                             dateStr,
                                         )}">{formatDate(dateStr)}</td
                                     >
                                     <td class="p-1 sm:p-2 border-b">
                                         {#if post}
                                             {#if hasFullAccess(post)}
-                                                {#if post.url}
-                                                    <a
-                                                        href={post.url}
-                                                        target="_blank"
-                                                        class="text-indigo-600 hover:underline break-all"
-                                                        >{post.title}</a
-                                                    >
-                                                {:else}
-                                                    <span class="break-all"
-                                                        >{post.title}</span
-                                                    >
-                                                {/if}
-                                            {:else}
-                                                <span class="text-gray-400"
-                                                    >？？？</span
-                                                >
-                                            {/if}
-                                        {:else}
-                                            <span class="text-gray-400">ー</span
-                                            >
-                                        {/if}
-                                    </td>
-                                    <td class="p-1 sm:p-2 border-b">
-                                        {#if post}
-                                            {#if hasFullAccess(post)}
-                                                {#if post.user}
+                                                <!-- 記事タイトル -->
+                                                <div class="mb-1">
+                                                    {#if post.url && post.url.trim() !== "" && post.title && post.title.trim() !== ""}
+                                                        <a
+                                                            href={post.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            class="text-indigo-600 hover:underline break-all font-medium text-base"
+                                                            >{post.title}
+                                                            <ExternalLink
+                                                                class="inline h-4 w-4"
+                                                            /></a
+                                                        >
+                                                    {:else if post.url && post.url.trim() !== ""}
+                                                        <a
+                                                            href={post.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            class="text-indigo-600 hover:underline break-all font-medium text-base"
+                                                            >{post.url}
+                                                            <ExternalLink
+                                                                class="inline h-4 w-4"
+                                                            /></a
+                                                        >
+                                                    {:else if post.title && post.title.trim() !== ""}
+                                                        <span
+                                                            class="break-all font-medium text-base"
+                                                            >{post.title}</span
+                                                        >
+                                                    {:else}
+                                                        <span
+                                                            class="text-gray-700 break-all font-medium text-base"
+                                                            >(タイトル未定)</span
+                                                        >
+                                                    {/if}
+                                                </div>
+
+                                                <!-- 担当者情報 -->
+                                                <div class="mb-1 text-base">
                                                     <div
-                                                        class="flex items-center space-x-1 sm:space-x-2"
+                                                        class="flex items-center space-x-1"
                                                     >
-                                                        {#if post.user.profile_image_url}
+                                                        <span
+                                                            class="text-gray-700"
+                                                            >by</span
+                                                        >
+                                                        {#if post.user?.profile_image_url}
                                                             <img
                                                                 src={post.user
                                                                     .profile_image_url}
                                                                 alt={post.user
                                                                     .display_name}
-                                                                class="h-5 w-5 sm:h-6 sm:w-6 rounded-full"
+                                                                class="h-5 w-5 rounded-full"
                                                             />
                                                         {:else}
                                                             <User
-                                                                class="h-4 w-4 text-gray-400"
+                                                                class="h-5 w-5 text-gray-400"
                                                             />
                                                         {/if}
                                                         <span
-                                                            class="text-xs sm:text-sm text-gray-700"
+                                                            class="text-gray-700"
                                                         >
-                                                            {#if post.user.display_name && post.user.display_name.trim() !== ""}
+                                                            {#if post.user?.display_name && post.user.display_name.trim() !== ""}
                                                                 {post.user
                                                                     .display_name}
-                                                                {#if post.user.username && post.user.username.trim() !== ""}
+                                                                {#if post.user?.username && post.user.username.trim() !== ""}
                                                                     {@html ` (<a href=\"https://x.com/${post.user.username}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-indigo-600 hover:underline\">@${post.user.username}</a>)`}
                                                                 {/if}
-                                                            {:else if post.user.username && post.user.username.trim() !== ""}
+                                                            {:else if post.user?.username && post.user.username.trim() !== ""}
                                                                 {@html `<a href=\"https://x.com/${post.user.username}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-indigo-600 hover:underline\">@${post.user.username}</a>`}
                                                             {/if}
                                                         </span>
@@ -554,65 +562,60 @@
                                                                 title="設定"
                                                             >
                                                                 <Settings
-                                                                    class="inline h-4 w-4 ml-1 text-gray-500 hover:text-indigo-600"
+                                                                    class="inline h-5 w-5 ml-1 text-gray-500 hover:text-indigo-600"
                                                                 />
                                                             </button>
                                                         {/if}
                                                     </div>
-                                                {:else}
+                                                </div>
+
+                                                <!-- 説明 -->
+                                                {#if post.description && post.description.trim() !== ""}
                                                     <div
-                                                        class="flex items-center space-x-1 sm:space-x-2"
+                                                        class="text-sm text-gray-600 break-all"
                                                     >
-                                                        <User
-                                                            class="h-4 w-4 text-gray-300"
-                                                        />
-                                                        <span
-                                                            class="text-gray-400"
-                                                            >未定</span
-                                                        >
+                                                        {post.description}
                                                     </div>
                                                 {/if}
                                             {:else}
+                                                <!-- 未公開記事 -->
+                                                <div class="mb-1">
+                                                    <span
+                                                        class="text-gray-400 font-medium text-base"
+                                                        >？？？</span
+                                                    >
+                                                </div>
                                                 <div
-                                                    class="flex items-center space-x-1 sm:space-x-2"
+                                                    class="flex items-center space-x-1"
                                                 >
+                                                    <span class="text-gray-400"
+                                                        >by</span
+                                                    >
                                                     <User
-                                                        class="h-4 w-4 text-gray-300"
+                                                        class="h-5 w-5 text-gray-300"
                                                     />
                                                     <span class="text-gray-400"
                                                         >？？？</span
                                                     >
                                                 </div>
                                             {/if}
-                                        {:else if $user}
-                                            <button
-                                                class="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-                                                on:click={() =>
-                                                    handleReservePost(dateStr)}
-                                            >
-                                                登録
-                                            </button>
                                         {:else}
-                                            <span class="text-gray-300"
-                                                >未定</span
-                                            >
-                                        {/if}
-                                    </td>
-                                    <td class="p-1 sm:p-2 border-b">
-                                        {#if post}
-                                            {#if hasFullAccess(post)}
-                                                <span class="break-all"
-                                                    >{post.description ||
-                                                        ""}</span
+                                            <!-- 未登録日 -->
+                                            {#if $user}
+                                                <button
+                                                    class="px-2 py-1 text-sm bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                                                    on:click={() =>
+                                                        handleReservePost(
+                                                            dateStr,
+                                                        )}
                                                 >
+                                                    登録
+                                                </button>
                                             {:else}
-                                                <span class="text-gray-400"
-                                                    >？？？</span
-                                                >
+                                                <div class="text-gray-300">
+                                                    未定
+                                                </div>
                                             {/if}
-                                        {:else}
-                                            <span class="text-gray-300">ー</span
-                                            >
                                         {/if}
                                     </td>
                                 </tr>

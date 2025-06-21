@@ -1,6 +1,6 @@
 import type { User, Post, PostCreate, PostUpdate, AuthResponse } from './types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
 
 export type CalendarInfo = {
     start_date: string;
