@@ -47,11 +47,29 @@ class Post(Base):
     @property
     def is_public(self):
         JST = timezone(timedelta(hours=9))
-        now = datetime.now(JST).date()
-        # 担当者・タイトル・URLが全て埋まっていて、公開日を過ぎている
-        return (
-            self.user_id is not None and
-            self.title and self.title.strip() != "" and
-            self.url and self.url.strip() != "" and
-            self.post_date <= now
+        now = datetime.now(JST)
+
+        # 公開日の22:00を設定
+        publish_time = datetime.combine(
+            self.post_date, datetime.min.time().replace(hour=22), tzinfo=JST
         )
+
+        # 担当者・タイトル・URLが全て埋まっていて、公開日の22:00を過ぎている
+        return (
+            self.user_id is not None
+            and self.title
+            and self.title.strip() != ""
+            and self.url
+            and self.url.strip() != ""
+            and now >= publish_time
+        )
+
+
+class Overview(Base):
+    __tablename__ = "overview"
+
+    id = Column(Integer, primary_key=True)
+    content = Column(Text, nullable=False)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )

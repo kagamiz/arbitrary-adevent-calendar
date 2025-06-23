@@ -6,10 +6,12 @@
         calendarInfo,
         loading,
         error,
+        errorType,
         checkAuth,
         logout,
         setError,
         calendarName,
+        overview,
     } from "$lib/stores";
     import { apiClient } from "$lib/api";
     import {
@@ -24,6 +26,7 @@
         Settings,
     } from "lucide-svelte";
     import type { Post } from "$lib/types";
+    import QuillEditor from "$lib/QuillEditor.svelte";
 
     let showContentModal = false;
     let showActionModal = false;
@@ -40,10 +43,36 @@
     };
     let calendarDates: string[] = [];
     let menuOpen = false;
+    let overviewHtml = "";
+    let overviewEdit = "";
+    let editing = false;
+    let previewing = false;
+    let saving = false;
+    let errorMsg = "";
 
     onMount(async () => {
         console.log("VITE_FRONTEND_URL:", import.meta.env.VITE_FRONTEND_URL);
+
+        // URLパラメータから認証エラーをチェック
+        const urlParams = new URLSearchParams(window.location.search);
+        const authError = urlParams.get("auth_error");
+        if (authError === "login_failed") {
+            setError("ログインに失敗しました");
+            // URLからエラーパラメータを削除
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete("auth_error");
+            window.history.replaceState({}, "", newUrl.toString());
+        }
+
         await loadData();
+        try {
+            const res = await apiClient.getOverview();
+            overview.set(res.content);
+            overviewHtml = res.content;
+            overviewEdit = res.content;
+        } catch (e) {
+            errorMsg = "概要の取得に失敗しました";
+        }
     });
 
     async function loadData() {
@@ -229,23 +258,8 @@
     }
 
     function canSeePostDetails(post: Post): boolean {
-        // 未ログイン時は、該当日に到達し、かつ記事が準備完了している場合のみアクセス可能
-        return isDateReached(post.post_date) && isPostReady(post);
-    }
-
-    function isDateReached(dateStr: string): boolean {
-        const today = new Date();
-        const date = new Date(dateStr);
-        return today.toDateString() >= date.toDateString();
-    }
-
-    function isPostReady(post: Post): boolean {
-        return Boolean(
-            post.title &&
-                post.url &&
-                post.title.trim() !== "" &&
-                post.url.trim() !== "",
-        );
+        // バックエンドから返されるis_publicを使用
+        return post.is_public;
     }
 
     $: if ($calendarInfo) {
@@ -259,8 +273,23 @@
     }
 
     async function handleLogout() {
-        logout();
+        logout("manual");
         await loadData(); // ログアウト後にデータを再読み込み
+    }
+
+    async function saveOverview() {
+        saving = true;
+        errorMsg = "";
+        try {
+            const res = await apiClient.updateOverview(overviewEdit);
+            overview.set(res.content);
+            overviewHtml = res.content;
+            editing = false;
+        } catch (e) {
+            errorMsg = "保存に失敗しました";
+        } finally {
+            saving = false;
+        }
     }
 </script>
 
@@ -459,6 +488,79 @@
                 ></div>
             </div>
         {:else if $calendarInfo}
+            <!-- 概要セクション -->
+            {#if $user && $user.is_admin}
+                <div class="mb-4 bg-white rounded shadow p-4 w-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold"
+                            >カレンダー概要（HTML可）</span
+                        >
+                        {#if !editing}
+                            <button
+                                class="text-sm text-blue-600 hover:underline"
+                                on:click={() => (editing = true)}>編集</button
+                            >
+                        {/if}
+                    </div>
+                    {#if editing}
+                        <div class="mb-2 w-full overflow-x-auto">
+                            <QuillEditor
+                                bind:value={overviewEdit}
+                                placeholder="カレンダーの概要を入力してください..."
+                            />
+                        </div>
+                        <div class="flex space-x-2">
+                            <button
+                                class="px-3 py-1 bg-blue-600 text-white rounded"
+                                on:click={saveOverview}
+                                disabled={saving}>保存</button
+                            >
+                            <button
+                                class="px-3 py-1 bg-green-600 text-white rounded"
+                                on:click={() => (previewing = !previewing)}
+                            >
+                                {previewing
+                                    ? "プレビューを閉じる"
+                                    : "プレビュー"}
+                            </button>
+                            <button
+                                class="px-3 py-1 bg-gray-300 rounded"
+                                on:click={() => {
+                                    editing = false;
+                                    previewing = false;
+                                    overviewEdit = overviewHtml;
+                                }}>キャンセル</button
+                            >
+                        </div>
+                        {#if previewing}
+                            <div class="mt-4 p-4 bg-gray-50 rounded border">
+                                <h4
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                >
+                                    プレビュー:
+                                </h4>
+                                <div class="prose max-w-none quill-preview">
+                                    {@html overviewEdit}
+                                </div>
+                            </div>
+                        {/if}
+                        {#if errorMsg}
+                            <div class="text-red-600 text-sm mt-1">
+                                {errorMsg}
+                            </div>
+                        {/if}
+                    {:else}
+                        <div class="prose max-w-none quill-preview">
+                            {@html overviewHtml}
+                        </div>
+                    {/if}
+                </div>
+            {:else if overviewHtml}
+                <div class="mb-4 bg-white rounded shadow p-4 prose max-w-none">
+                    {@html overviewHtml}
+                </div>
+            {/if}
+
             <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">
                     カレンダー
@@ -625,215 +727,422 @@
                 </div>
             </div>
         {/if}
-    </main>
 
-    <!-- エラーメッセージ -->
-    {#if $error}
-        <div
-            class="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50"
-        >
-            {$error}
-        </div>
-    {/if}
-
-    <!-- 事前登録モーダル -->
-    {#if showPreRegisterModal}
-        <div
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        >
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                    事前登録
-                </h3>
-                <form on:submit|preventDefault={handlePreRegisterPost}>
-                    <div class="space-y-4">
-                        <div>
-                            <label
-                                for="pre_register_date"
-                                class="block text-sm font-medium text-gray-700"
-                                >投稿日</label
-                            >
-                            <select
-                                id="pre_register_date"
-                                bind:value={preRegisterForm.post_date}
-                                required
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                                <option value="">日付を選択してください</option>
-                                {#each calendarDates as dateStr}
-                                    {#if !$posts.find((p) => p.post_date === dateStr)}
-                                        <option value={dateStr}
-                                            >{formatDate(dateStr)}</option
-                                        >
-                                    {/if}
-                                {/each}
-                            </select>
-                        </div>
-                        <div>
-                            <label
-                                for="username"
-                                class="block text-sm font-medium text-gray-700"
-                                >Xユーザー名</label
-                            >
-                            <input
-                                type="text"
-                                id="username"
-                                bind:value={preRegisterForm.username}
-                                placeholder="例: mock_user"
-                                required
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                        </div>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button
-                            type="button"
-                            on:click={() => (showPreRegisterModal = false)}
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                        >
-                            キャンセル
-                        </button>
-                        <button
-                            type="submit"
-                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
-                        >
-                            登録する
-                        </button>
-                    </div>
-                </form>
+        <!-- エラーメッセージ -->
+        {#if $error}
+            <div
+                class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded shadow-lg text-white transition-all duration-300 flex items-center gap-4"
+                class:bg-green-500={$errorType === "success"}
+                class:bg-red-500={$errorType === "error"}
+            >
+                <span>{$error}</span>
+                <button
+                    class="ml-2 text-white text-xl focus:outline-none"
+                    on:click={() => {
+                        error.set(null);
+                        errorType.set(null);
+                    }}
+                    aria-label="閉じる">×</button
+                >
             </div>
-        </div>
-    {/if}
+        {/if}
 
-    <!-- 記事情報入力・更新モーダル -->
-    {#if showContentModal && selectedPost}
-        <div
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        >
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                    記事情報の入力・更新
-                </h3>
-                <form on:submit|preventDefault={handleUpdateContent}>
-                    <div class="space-y-4">
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700"
-                                >投稿日</label
-                            >
-                            <div
-                                class="mt-1 p-2 bg-gray-100 rounded-md text-gray-700"
-                            >
-                                {formatDate(selectedPost.post_date)}
+        <!-- 事前登録モーダル -->
+        {#if showPreRegisterModal}
+            <div
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+                <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        事前登録
+                    </h3>
+                    <form on:submit|preventDefault={handlePreRegisterPost}>
+                        <div class="space-y-4">
+                            <div>
+                                <label
+                                    for="pre_register_date"
+                                    class="block text-sm font-medium text-gray-700"
+                                    >投稿日</label
+                                >
+                                <select
+                                    id="pre_register_date"
+                                    bind:value={preRegisterForm.post_date}
+                                    required
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value=""
+                                        >日付を選択してください</option
+                                    >
+                                    {#each calendarDates as dateStr}
+                                        {#if !$posts.find((p) => p.post_date === dateStr)}
+                                            <option value={dateStr}
+                                                >{formatDate(dateStr)}</option
+                                            >
+                                        {/if}
+                                    {/each}
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    for="username"
+                                    class="block text-sm font-medium text-gray-700"
+                                    >Xユーザー名</label
+                                >
+                                <input
+                                    type="text"
+                                    id="username"
+                                    bind:value={preRegisterForm.username}
+                                    placeholder="例: mock_user"
+                                    required
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
                             </div>
                         </div>
-                        <div>
-                            <label
-                                for="content_title"
-                                class="block text-sm font-medium text-gray-700"
-                                >記事タイトル（任意）</label
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button
+                                type="button"
+                                on:click={() => (showPreRegisterModal = false)}
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                             >
-                            <input
-                                type="text"
-                                id="content_title"
-                                bind:value={contentForm.title}
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                for="content_url"
-                                class="block text-sm font-medium text-gray-700"
-                                >記事URL（任意）</label
+                                キャンセル
+                            </button>
+                            <button
+                                type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
                             >
-                            <input
-                                type="url"
-                                id="content_url"
-                                bind:value={contentForm.url}
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            />
+                                登録する
+                            </button>
                         </div>
-                        <div>
-                            <label
-                                for="content_description"
-                                class="block text-sm font-medium text-gray-700"
-                                >説明（任意）</label
+                    </form>
+                </div>
+            </div>
+        {/if}
+
+        <!-- 記事情報入力・更新モーダル -->
+        {#if showContentModal && selectedPost}
+            <div
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+                <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        記事情報の入力・更新
+                    </h3>
+                    <form on:submit|preventDefault={handleUpdateContent}>
+                        <div class="space-y-4">
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-gray-700"
+                                    >投稿日</label
+                                >
+                                <div
+                                    class="mt-1 p-2 bg-gray-100 rounded-md text-gray-700"
+                                >
+                                    {formatDate(selectedPost.post_date)}
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    for="content_title"
+                                    class="block text-sm font-medium text-gray-700"
+                                    >記事タイトル（任意）</label
+                                >
+                                <input
+                                    type="text"
+                                    id="content_title"
+                                    bind:value={contentForm.title}
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    for="content_url"
+                                    class="block text-sm font-medium text-gray-700"
+                                    >記事URL（任意）</label
+                                >
+                                <input
+                                    type="url"
+                                    id="content_url"
+                                    bind:value={contentForm.url}
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+                            <div>
+                                <label
+                                    for="content_description"
+                                    class="block text-sm font-medium text-gray-700"
+                                    >説明（任意）</label
+                                >
+                                <textarea
+                                    id="content_description"
+                                    bind:value={contentForm.description}
+                                    rows="3"
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button
+                                type="button"
+                                on:click={() => (showContentModal = false)}
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                             >
-                            <textarea
-                                id="content_description"
-                                bind:value={contentForm.description}
-                                rows="3"
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            ></textarea>
+                                キャンセル
+                            </button>
+                            <button
+                                type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
+                            >
+                                更新する
+                            </button>
                         </div>
+                    </form>
+                </div>
+            </div>
+        {/if}
+
+        <!-- 操作モーダル -->
+        {#if showActionModal && selectedPost}
+            <div
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+                <div class="bg-white rounded-lg p-6 w-full max-w-sm">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        操作メニュー
+                    </h3>
+                    <div class="space-y-3">
+                        <button
+                            class="w-full px-4 py-2 bg-blue-200 text-blue-700 rounded hover:bg-blue-300 transition-colors text-left"
+                            on:click={() => {
+                                showActionModal = false;
+                                if (selectedPost)
+                                    openContentModal(selectedPost);
+                            }}
+                        >
+                            記事情報の入力・更新
+                        </button>
+                        <button
+                            class="w-full px-4 py-2 bg-red-200 text-red-700 rounded hover:bg-red-300 transition-colors text-left"
+                            on:click={() => {
+                                showActionModal = false;
+                                if (selectedPost)
+                                    handleDeletePost(selectedPost);
+                            }}
+                        >
+                            {#if $user && $user.is_admin && selectedPost && selectedPost.user_id !== $user.id}
+                                担当者を外す
+                            {:else}
+                                担当を外れる
+                            {/if}
+                        </button>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
+                    <div class="flex justify-end mt-6">
                         <button
                             type="button"
-                            on:click={() => (showContentModal = false)}
+                            on:click={() => (showActionModal = false)}
                             class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                         >
                             キャンセル
                         </button>
-                        <button
-                            type="submit"
-                            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
-                        >
-                            更新する
-                        </button>
                     </div>
-                </form>
-            </div>
-        </div>
-    {/if}
-
-    <!-- 操作モーダル -->
-    {#if showActionModal && selectedPost}
-        <div
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        >
-            <div class="bg-white rounded-lg p-6 w-full max-w-sm">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                    操作メニュー
-                </h3>
-                <div class="space-y-3">
-                    <button
-                        class="w-full px-4 py-2 bg-blue-200 text-blue-700 rounded hover:bg-blue-300 transition-colors text-left"
-                        on:click={() => {
-                            showActionModal = false;
-                            if (selectedPost) openContentModal(selectedPost);
-                        }}
-                    >
-                        記事情報の入力・更新
-                    </button>
-                    <button
-                        class="w-full px-4 py-2 bg-red-200 text-red-700 rounded hover:bg-red-300 transition-colors text-left"
-                        on:click={() => {
-                            showActionModal = false;
-                            if (selectedPost) handleDeletePost(selectedPost);
-                        }}
-                    >
-                        {#if $user && $user.is_admin && selectedPost && selectedPost.user_id !== $user.id}
-                            担当者を外す
-                        {:else}
-                            担当を外れる
-                        {/if}
-                    </button>
-                </div>
-                <div class="flex justify-end mt-6">
-                    <button
-                        type="button"
-                        on:click={() => (showActionModal = false)}
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                    >
-                        キャンセル
-                    </button>
                 </div>
             </div>
-        </div>
-    {/if}
+        {/if}
+    </main>
 </div>
 
 <style>
-    /* Tailwind CSSのスタイルが適用されるため、追加のスタイルは不要 */
+    .quill-preview :global(h1) {
+        font-size: 1.875rem !important;
+        font-weight: 700 !important;
+        margin: 1rem 0 0.5rem 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .quill-preview :global(h2) {
+        font-size: 1.5rem !important;
+        font-weight: 600 !important;
+        margin: 0.75rem 0 0.5rem 0 !important;
+        line-height: 1.3 !important;
+    }
+
+    .quill-preview :global(h3) {
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+        margin: 0.5rem 0 0.25rem 0 !important;
+        line-height: 1.4 !important;
+    }
+
+    .quill-preview :global(p) {
+        margin: 0.5rem 0 !important;
+        line-height: 1.6 !important;
+    }
+
+    /* リストスタイル */
+    .quill-preview :global(ul) {
+        margin: 0.5rem 0 !important;
+        padding-left: 1.5rem !important;
+        list-style-type: disc !important;
+        display: block !important;
+    }
+
+    .quill-preview :global(ol) {
+        margin: 0.5rem 0 !important;
+        padding-left: 1.5rem !important;
+        list-style-type: decimal !important;
+        display: block !important;
+    }
+
+    .quill-preview :global(li) {
+        margin: 0.25rem 0 !important;
+        line-height: 1.5 !important;
+        display: list-item !important;
+    }
+
+    .quill-preview :global(ul li) {
+        list-style-type: disc !important;
+        display: list-item !important;
+    }
+
+    .quill-preview :global(ol li) {
+        list-style-type: decimal !important;
+        display: list-item !important;
+    }
+
+    /* ネストしたリスト */
+    .quill-preview :global(ul ul) {
+        margin: 0.25rem 0 !important;
+        padding-left: 1rem !important;
+        list-style-type: circle !important;
+    }
+
+    .quill-preview :global(ol ol) {
+        margin: 0.25rem 0 !important;
+        padding-left: 1rem !important;
+        list-style-type: lower-alpha !important;
+    }
+
+    .quill-preview :global(ul ul li) {
+        list-style-type: circle !important;
+        display: list-item !important;
+    }
+
+    .quill-preview :global(ol ol li) {
+        list-style-type: lower-alpha !important;
+        display: list-item !important;
+    }
+
+    /* 3階層目のネスト */
+    .quill-preview :global(ul ul ul) {
+        list-style-type: square !important;
+    }
+
+    .quill-preview :global(ol ol ol) {
+        list-style-type: lower-roman !important;
+    }
+
+    .quill-preview :global(ul ul ul li) {
+        list-style-type: square !important;
+        display: list-item !important;
+    }
+
+    .quill-preview :global(ol ol ol li) {
+        list-style-type: lower-roman !important;
+        display: list-item !important;
+    }
+
+    /* 混在したネスト */
+    .quill-preview :global(ul ol) {
+        list-style-type: decimal !important;
+    }
+
+    .quill-preview :global(ol ul) {
+        list-style-type: disc !important;
+    }
+
+    .quill-preview :global(ul ol li) {
+        list-style-type: decimal !important;
+        display: list-item !important;
+    }
+
+    .quill-preview :global(ol ul li) {
+        list-style-type: disc !important;
+        display: list-item !important;
+    }
+
+    /* リンクスタイル */
+    .quill-preview :global(a) {
+        color: #3b82f6 !important;
+        text-decoration: underline !important;
+        cursor: pointer !important;
+        transition: color 0.2s ease !important;
+    }
+
+    .quill-preview :global(a:hover) {
+        color: #1d4ed8 !important;
+        text-decoration: underline !important;
+    }
+
+    .quill-preview :global(a:visited) {
+        color: #7c3aed !important;
+    }
+
+    .quill-preview :global(a:active) {
+        color: #dc2626 !important;
+    }
+
+    /* 引用スタイル */
+    .quill-preview :global(blockquote) {
+        border-left: 4px solid #d1d5db !important;
+        padding-left: 1rem !important;
+        margin: 0.5rem 0 !important;
+        font-style: italic !important;
+        color: #6b7280 !important;
+        background-color: #f9fafb !important;
+        padding: 0.75rem 1rem !important;
+        border-radius: 0.25rem !important;
+    }
+
+    /* コードブロックスタイル */
+    .quill-preview :global(code) {
+        background-color: #f3f4f6 !important;
+        padding: 0.125rem 0.25rem !important;
+        border-radius: 0.25rem !important;
+        font-family: "Courier New", monospace !important;
+        font-size: 0.875em !important;
+        color: #374151 !important;
+    }
+
+    .quill-preview :global(pre) {
+        background-color: #1f2937 !important;
+        color: #f9fafb !important;
+        padding: 1rem !important;
+        border-radius: 0.5rem !important;
+        overflow-x: auto !important;
+        margin: 0.5rem 0 !important;
+    }
+
+    .quill-preview :global(pre code) {
+        background-color: transparent !important;
+        color: inherit !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        font-size: 0.875rem !important;
+    }
+
+    /* 強調スタイル */
+    .quill-preview :global(strong) {
+        font-weight: 700 !important;
+    }
+
+    .quill-preview :global(em) {
+        font-style: italic !important;
+    }
+
+    .quill-preview :global(u) {
+        text-decoration: underline !important;
+    }
+
+    .quill-preview :global(s) {
+        text-decoration: line-through !important;
+    }
 </style>

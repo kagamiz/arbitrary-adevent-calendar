@@ -3,12 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timezone, timedelta
-from typing import List
+from typing import List, Optional
 import os
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from config import settings
 from database import get_db, engine
-from models import Base, User, Post
+from models import Base, User, Post, Overview
 from schemas import (
     User as UserSchema,
     Post as PostSchema,
@@ -20,6 +21,8 @@ from schemas import (
     PostPublic,
     Token,
     CalendarInfo,
+    OverviewUpdate,
+    OverviewResponse,
 )
 from auth import (
     get_current_active_user,
@@ -118,15 +121,34 @@ async def mock_auth_callback2(db: Session = Depends(get_db)):
 
 
 @app.get("/auth/callback")
-async def auth_callback(code: str, db: Session = Depends(get_db)):
+async def auth_callback(
+    code: Optional[str] = None,
+    error: Optional[str] = None,
+    state: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     """X OAuth認証コールバック"""
+
+    # エラーパラメータがある場合はフロントエンドにリダイレクト
+    if error:
+        print(f"Debug: Auth callback received with error: {error}")
+        redirect_url = f"{settings.frontend_url}/?auth_error=login_failed"
+        return RedirectResponse(url=redirect_url)
+
+    # codeパラメータがない場合もエラーとして処理
+    if not code:
+        print("Debug: Auth callback received without code parameter")
+        redirect_url = f"{settings.frontend_url}/?auth_error=login_failed"
+        return RedirectResponse(url=redirect_url)
+
     print(f"Debug: Auth callback received with code: {code}")
 
     # 認証コードをアクセストークンと交換
     token_data = await exchange_code_for_token(code)
     if not token_data:
         print("Debug: Token exchange failed")
-        raise HTTPException(status_code=400, detail="認証に失敗しました")
+        redirect_url = f"{settings.frontend_url}/?auth_error=login_failed"
+        return RedirectResponse(url=redirect_url)
 
     print(f"Debug: Token exchange successful: {token_data}")
 
@@ -134,7 +156,8 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
     user_info = await get_x_user_info(token_data["access_token"])
     if not user_info:
         print("Debug: Failed to get user info")
-        raise HTTPException(status_code=400, detail="ユーザー情報の取得に失敗しました")
+        redirect_url = f"{settings.frontend_url}/?auth_error=login_failed"
+        return RedirectResponse(url=redirect_url)
 
     print(f"Debug: User info retrieved: {user_info}")
 
@@ -531,3 +554,32 @@ async def pre_register_post(
         "message": f"{pre_register.post_date} の担当者として username {user.username} を登録しました",
         "post": db_post,
     }
+
+
+@app.get("/overview", response_model=OverviewResponse)
+async def get_overview(db: Session = Depends(get_db)):
+    """概要情報を取得"""
+    overview = db.query(Overview).first()
+    content = overview.content if overview else ""
+    return OverviewResponse(content=content)
+
+
+@app.put("/overview", response_model=OverviewResponse)
+async def update_overview(
+    update: OverviewUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """概要情報を更新（管理者のみ）"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="管理者権限が必要です")
+
+    overview = db.query(Overview).first()
+    if overview:
+        overview.content = update.content
+        overview.updated_at = datetime.utcnow()
+    else:
+        overview = Overview(content=update.content, updated_at=datetime.utcnow())
+        db.add(overview)
+    db.commit()
+    return OverviewResponse(content=overview.content)

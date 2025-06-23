@@ -1,4 +1,4 @@
-// See https://svelte.dev/docs/kit/types#app.d.ts
+// See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
 declare global {
 	namespace App {
@@ -10,4 +10,6 @@ declare global {
 	}
 }
 
-export {};
+declare module 'svelte-quill';
+
+export { };

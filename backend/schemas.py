@@ -71,10 +71,12 @@ class Post(BaseModel):
         JST = timezone(timedelta(hours=9))
         now = datetime.now(JST).date()
         return (
-            self.user_id is not None and
-            self.title and self.title.strip() != "" and
-            self.url and self.url.strip() != "" and
-            self.post_date <= now
+            self.user_id is not None
+            and self.title
+            and self.title.strip() != ""
+            and self.url
+            and self.url.strip() != ""
+            and self.post_date <= now
         )
 
     class Config:
@@ -95,10 +97,12 @@ class PostPublic(BaseModel):
         JST = timezone(timedelta(hours=9))
         now = datetime.now(JST).date()
         return (
-            self.user is not None and
-            self.title and self.title.strip() != "" and
-            self.url and self.url.strip() != "" and
-            self.post_date <= now
+            self.user is not None
+            and self.title
+            and self.title.strip() != ""
+            and self.url
+            and self.url.strip() != ""
+            and self.post_date <= now
         )
 
     class Config:
@@ -119,3 +123,11 @@ class CalendarInfo(BaseModel):
     end_date: str
     total_days: int
     calendar_name: str
+
+
+class OverviewUpdate(BaseModel):
+    content: str
+
+
+class OverviewResponse(BaseModel):
+    content: str

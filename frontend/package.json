@@ -25,6 +25,8 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-static": "^3.0.8",
-		"lucide-svelte": "^0.517.0"
+		"lucide-svelte": "^0.517.0",
+		"quill": "^2.0.3",
+		"svelte-quill": "^1.2.0"
 	}
 }

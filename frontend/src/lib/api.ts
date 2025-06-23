@@ -1,4 +1,5 @@
 import type { User, Post, PostCreate, PostUpdate, AuthResponse } from './types';
+import { logout } from './stores';
 
 const API_BASE_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
 
@@ -41,6 +42,10 @@ class ApiClient {
         const response = await fetch(url, config);
 
         if (!response.ok) {
+            if (response.status === 401) {
+                logout('auth');
+                throw new Error("認証情報を取得できませんでした");
+            }
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(error.detail || `HTTP error! status: ${response.status}`);
         }
@@ -125,6 +130,18 @@ class ApiClient {
     // ユーザー情報
     async getCurrentUser(): Promise<User> {
         return this.request<User>('/me');
+    }
+
+    // 概要データ
+    async getOverview(): Promise<{ content: string }> {
+        return this.request<{ content: string }>('/overview');
+    }
+
+    async updateOverview(content: string): Promise<{ content: string }> {
+        return this.request<{ content: string }>('/overview', {
+            method: 'PUT',
+            body: JSON.stringify({ content }),
+        });
     }
 }
 
