@@ -492,9 +492,7 @@
             {#if $user && $user.is_admin}
                 <div class="mb-4 bg-white rounded shadow p-4 w-full">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="font-semibold"
-                            >カレンダー概要（HTML可）</span
-                        >
+                        <span class="font-semibold">説明用テキスト記入欄</span>
                         {#if !editing}
                             <button
                                 class="text-sm text-blue-600 hover:underline"
@@ -550,14 +548,14 @@
                             </div>
                         {/if}
                     {:else}
-                        <div class="prose max-w-none quill-preview">
-                            {@html overviewHtml}
+                        <div class="mb-4 bg-white rounded shadow p-4">
+                            <QuillEditor value={overviewHtml} preview={true} />
                         </div>
                     {/if}
                 </div>
             {:else if overviewHtml}
-                <div class="mb-4 bg-white rounded shadow p-4 prose max-w-none">
-                    {@html overviewHtml}
+                <div class="mb-4 bg-white rounded shadow p-4">
+                    <QuillEditor value={overviewHtml} preview={true} />
                 </div>
             {/if}
 
@@ -949,200 +947,3 @@
         {/if}
     </main>
 </div>
-
-<style>
-    .quill-preview :global(h1) {
-        font-size: 1.875rem !important;
-        font-weight: 700 !important;
-        margin: 1rem 0 0.5rem 0 !important;
-        line-height: 1.2 !important;
-    }
-
-    .quill-preview :global(h2) {
-        font-size: 1.5rem !important;
-        font-weight: 600 !important;
-        margin: 0.75rem 0 0.5rem 0 !important;
-        line-height: 1.3 !important;
-    }
-
-    .quill-preview :global(h3) {
-        font-size: 1.25rem !important;
-        font-weight: 600 !important;
-        margin: 0.5rem 0 0.25rem 0 !important;
-        line-height: 1.4 !important;
-    }
-
-    .quill-preview :global(p) {
-        margin: 0.5rem 0 !important;
-        line-height: 1.6 !important;
-    }
-
-    /* リストスタイル */
-    .quill-preview :global(ul) {
-        margin: 0.5rem 0 !important;
-        padding-left: 1.5rem !important;
-        list-style-type: disc !important;
-        display: block !important;
-    }
-
-    .quill-preview :global(ol) {
-        margin: 0.5rem 0 !important;
-        padding-left: 1.5rem !important;
-        list-style-type: decimal !important;
-        display: block !important;
-    }
-
-    .quill-preview :global(li) {
-        margin: 0.25rem 0 !important;
-        line-height: 1.5 !important;
-        display: list-item !important;
-    }
-
-    .quill-preview :global(ul li) {
-        list-style-type: disc !important;
-        display: list-item !important;
-    }
-
-    .quill-preview :global(ol li) {
-        list-style-type: decimal !important;
-        display: list-item !important;
-    }
-
-    /* ネストしたリスト */
-    .quill-preview :global(ul ul) {
-        margin: 0.25rem 0 !important;
-        padding-left: 1rem !important;
-        list-style-type: circle !important;
-    }
-
-    .quill-preview :global(ol ol) {
-        margin: 0.25rem 0 !important;
-        padding-left: 1rem !important;
-        list-style-type: lower-alpha !important;
-    }
-
-    .quill-preview :global(ul ul li) {
-        list-style-type: circle !important;
-        display: list-item !important;
-    }
-
-    .quill-preview :global(ol ol li) {
-        list-style-type: lower-alpha !important;
-        display: list-item !important;
-    }
-
-    /* 3階層目のネスト */
-    .quill-preview :global(ul ul ul) {
-        list-style-type: square !important;
-    }
-
-    .quill-preview :global(ol ol ol) {
-        list-style-type: lower-roman !important;
-    }
-
-    .quill-preview :global(ul ul ul li) {
-        list-style-type: square !important;
-        display: list-item !important;
-    }
-
-    .quill-preview :global(ol ol ol li) {
-        list-style-type: lower-roman !important;
-        display: list-item !important;
-    }
-
-    /* 混在したネスト */
-    .quill-preview :global(ul ol) {
-        list-style-type: decimal !important;
-    }
-
-    .quill-preview :global(ol ul) {
-        list-style-type: disc !important;
-    }
-
-    .quill-preview :global(ul ol li) {
-        list-style-type: decimal !important;
-        display: list-item !important;
-    }
-
-    .quill-preview :global(ol ul li) {
-        list-style-type: disc !important;
-        display: list-item !important;
-    }
-
-    /* リンクスタイル */
-    .quill-preview :global(a) {
-        color: #3b82f6 !important;
-        text-decoration: underline !important;
-        cursor: pointer !important;
-        transition: color 0.2s ease !important;
-    }
-
-    .quill-preview :global(a:hover) {
-        color: #1d4ed8 !important;
-        text-decoration: underline !important;
-    }
-
-    .quill-preview :global(a:visited) {
-        color: #7c3aed !important;
-    }
-
-    .quill-preview :global(a:active) {
-        color: #dc2626 !important;
-    }
-
-    /* 引用スタイル */
-    .quill-preview :global(blockquote) {
-        border-left: 4px solid #d1d5db !important;
-        padding-left: 1rem !important;
-        margin: 0.5rem 0 !important;
-        font-style: italic !important;
-        color: #6b7280 !important;
-        background-color: #f9fafb !important;
-        padding: 0.75rem 1rem !important;
-        border-radius: 0.25rem !important;
-    }
-
-    /* コードブロックスタイル */
-    .quill-preview :global(code) {
-        background-color: #f3f4f6 !important;
-        padding: 0.125rem 0.25rem !important;
-        border-radius: 0.25rem !important;
-        font-family: "Courier New", monospace !important;
-        font-size: 0.875em !important;
-        color: #374151 !important;
-    }
-
-    .quill-preview :global(pre) {
-        background-color: #1f2937 !important;
-        color: #f9fafb !important;
-        padding: 1rem !important;
-        border-radius: 0.5rem !important;
-        overflow-x: auto !important;
-        margin: 0.5rem 0 !important;
-    }
-
-    .quill-preview :global(pre code) {
-        background-color: transparent !important;
-        color: inherit !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-        font-size: 0.875rem !important;
-    }
-
-    /* 強調スタイル */
-    .quill-preview :global(strong) {
-        font-weight: 700 !important;
-    }
-
-    .quill-preview :global(em) {
-        font-style: italic !important;
-    }
-
-    .quill-preview :global(u) {
-        text-decoration: underline !important;
-    }
-
-    .quill-preview :global(s) {
-        text-decoration: line-through !important;
-    }
-</style>

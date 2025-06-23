@@ -5,6 +5,7 @@
 
     export let value = "";
     export let placeholder = "";
+    export let preview = false;
 
     let element: HTMLElement;
     let quill: any;
@@ -63,9 +64,13 @@
     }
 </script>
 
-<div class="quill-container">
-    <div bind:this={element}></div>
-</div>
+{#if preview}
+    <div class="ql-editor">{@html value}</div>
+{:else}
+    <div class="quill-container">
+        <div bind:this={element}></div>
+    </div>
+{/if}
 
 <style>
     .quill-container {
