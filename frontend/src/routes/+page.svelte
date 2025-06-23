@@ -89,12 +89,18 @@
 
             // 認証済みの場合、ユーザー情報と投稿を取得
             if (checkAuth()) {
-                const [userData, postsData] = await Promise.all([
-                    apiClient.getCurrentUser(),
-                    apiClient.getPosts(),
-                ]);
-                user.set(userData);
-                posts.set(postsData);
+                try {
+                    const [userData, postsData] = await Promise.all([
+                        apiClient.getCurrentUser(),
+                        apiClient.getPosts(),
+                    ]);
+                    user.set(userData);
+                    posts.set(postsData);
+                } catch (err) {
+                    // 認証情報取得失敗時は未ログインページへリダイレクト
+                    window.location.href = "/";
+                    return;
+                }
             } else {
                 // 未ログイン時は公開状態APIを使う
                 const postsData = await apiClient.getPublicPosts();
@@ -549,13 +555,20 @@
                         {/if}
                     {:else}
                         <div class="mb-4 bg-white rounded shadow p-4">
-                            <QuillEditor value={overviewHtml} preview={true} />
+                            <div class="prose max-w-none quill-preview">
+                                <QuillEditor
+                                    value={overviewHtml}
+                                    preview={true}
+                                />
+                            </div>
                         </div>
                     {/if}
                 </div>
             {:else if overviewHtml}
                 <div class="mb-4 bg-white rounded shadow p-4">
-                    <QuillEditor value={overviewHtml} preview={true} />
+                    <div class="prose max-w-none quill-preview">
+                        <QuillEditor value={overviewHtml} preview={true} />
+                    </div>
                 </div>
             {/if}
 
