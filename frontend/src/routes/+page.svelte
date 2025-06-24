@@ -144,9 +144,11 @@
     }
 
     async function handleReservePost(postDate: string) {
+        const scrollY = window.scrollY;
         try {
             await apiClient.reservePost(postDate);
             await loadData();
+            window.scrollTo(0, scrollY);
         } catch (err) {
             setError(
                 err instanceof Error
@@ -174,9 +176,11 @@
 
     async function handleDeletePost(post: Post) {
         if (!confirm("この投稿を削除しますか？")) return;
+        const scrollY = window.scrollY;
         try {
             await apiClient.deletePost(post.id);
             await loadData();
+            window.scrollTo(0, scrollY);
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : "投稿の削除に失敗しました",
@@ -581,154 +585,162 @@
                         class="min-w-[600px] w-full border-collapse text-sm sm:text-base"
                     >
                         <tbody>
-                            {#each calendarDates as dateStr, i}
-                                {@const post = $posts.find(
+                            {#each calendarDates as dateStr, i (dateStr)}
+                                {@const postsOfDay = $posts.filter(
                                     (p) => p.post_date === dateStr,
                                 )}
                                 <tr class="hover:bg-indigo-50">
                                     <td
                                         class="p-1 sm:p-2 border-b whitespace-nowrap w-16 {getDateColor(
                                             dateStr,
-                                        )}">{formatDate(dateStr)}</td
+                                        )} align-middle"
                                     >
+                                        {formatDate(dateStr)}
+                                    </td>
+                                    {#if $user}
+                                        <td
+                                            class="p-1 sm:p-2 border-b w-8 min-w-[32px] align-middle text-center"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="px-1 py-0.5 bg-green-200 text-green-700 rounded hover:bg-green-300 text-xs"
+                                                title="この日に記事を追加"
+                                                on:click={() =>
+                                                    handleReservePost(dateStr)}
+                                                >＋</button
+                                            >
+                                        </td>
+                                    {/if}
                                     <td class="p-1 sm:p-2 border-b">
-                                        {#if post}
-                                            {#if hasFullAccess(post)}
-                                                <!-- 記事タイトル -->
-                                                <div class="mb-1">
-                                                    {#if post.url && post.url.trim() !== "" && post.title && post.title.trim() !== ""}
-                                                        <a
-                                                            href={post.url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            class="text-indigo-600 hover:underline break-all font-medium text-base"
-                                                            >{post.title}
-                                                            <ExternalLink
-                                                                class="inline h-4 w-4"
-                                                            /></a
-                                                        >
-                                                    {:else if post.url && post.url.trim() !== ""}
-                                                        <a
-                                                            href={post.url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            class="text-indigo-600 hover:underline break-all font-medium text-base"
-                                                            >{post.url}
-                                                            <ExternalLink
-                                                                class="inline h-4 w-4"
-                                                            /></a
-                                                        >
-                                                    {:else if post.title && post.title.trim() !== ""}
-                                                        <span
-                                                            class="break-all font-medium text-base"
-                                                            >{post.title}</span
-                                                        >
-                                                    {:else}
-                                                        <span
-                                                            class="text-gray-700 break-all font-medium text-base"
-                                                            >(タイトル未定)</span
-                                                        >
-                                                    {/if}
-                                                </div>
-
-                                                <!-- 担当者情報 -->
-                                                <div class="mb-1 text-base">
+                                        {#if postsOfDay.length > 0}
+                                            {#each postsOfDay as post}
+                                                {#if hasFullAccess(post)}
+                                                    <!-- 記事タイトル・担当者・説明など（既存の表示ロジックを流用） -->
                                                     <div
-                                                        class="flex items-center space-x-1"
+                                                        class="mb-2 border-b border-gray-200 pb-2 last:border-b-0 last:pb-0"
                                                     >
-                                                        <span
-                                                            class="text-gray-700"
-                                                            >by</span
-                                                        >
-                                                        {#if post.user?.profile_image_url}
-                                                            <img
-                                                                src={post.user
-                                                                    .profile_image_url}
-                                                                alt={post.user
-                                                                    .display_name}
-                                                                class="h-5 w-5 rounded-full"
-                                                            />
-                                                        {:else}
-                                                            <User
-                                                                class="h-5 w-5 text-gray-400"
-                                                            />
-                                                        {/if}
-                                                        <span
-                                                            class="text-gray-700"
-                                                        >
-                                                            {#if post.user?.display_name && post.user.display_name.trim() !== ""}
-                                                                {post.user
-                                                                    .display_name}
-                                                                {#if post.user?.username && post.user.username.trim() !== ""}
-                                                                    {@html ` (<a href=\"https://x.com/${post.user.username}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-indigo-600 hover:underline\">@${post.user.username}</a>)`}
-                                                                {/if}
-                                                            {:else if post.user?.username && post.user.username.trim() !== ""}
-                                                                {@html `<a href=\"https://x.com/${post.user.username}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-indigo-600 hover:underline\">@${post.user.username}</a>`}
-                                                            {/if}
-                                                        </span>
-                                                        {#if canEdit(post)}
-                                                            <button
-                                                                on:click={() =>
-                                                                    openActionModal(
-                                                                        post,
-                                                                    )}
-                                                                title="設定"
+                                                        <!-- タイトル・URL表示 -->
+                                                        {#if post.url && post.url.trim() !== "" && post.title && post.title.trim() !== ""}
+                                                            <a
+                                                                href={post.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                class="text-indigo-600 hover:underline break-all font-medium text-base"
+                                                                >{post.title}<ExternalLink
+                                                                    class="inline h-4 w-4"
+                                                                /></a
                                                             >
-                                                                <Settings
-                                                                    class="inline h-5 w-5 ml-1 text-gray-500 hover:text-indigo-600"
+                                                        {:else if post.url && post.url.trim() !== ""}
+                                                            <a
+                                                                href={post.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                class="text-indigo-600 hover:underline break-all font-medium text-base"
+                                                                >{post.url}<ExternalLink
+                                                                    class="inline h-4 w-4"
+                                                                /></a
+                                                            >
+                                                        {:else if post.title && post.title.trim() !== ""}
+                                                            <span
+                                                                class="break-all font-medium text-base"
+                                                                >{post.title}</span
+                                                            >
+                                                        {:else}
+                                                            <span
+                                                                class="text-gray-700 break-all font-medium text-base"
+                                                                >(タイトル未定)</span
+                                                            >
+                                                        {/if}
+                                                        <!-- 担当者情報 -->
+                                                        <div
+                                                            class="flex items-center space-x-1 mt-1"
+                                                        >
+                                                            <span
+                                                                class="text-gray-700"
+                                                                >by</span
+                                                            >
+                                                            {#if post.user?.profile_image_url}
+                                                                <img
+                                                                    src={post
+                                                                        .user
+                                                                        .profile_image_url}
+                                                                    alt={post
+                                                                        .user
+                                                                        .display_name}
+                                                                    class="h-5 w-5 rounded-full"
                                                                 />
-                                                            </button>
+                                                            {:else}
+                                                                <User
+                                                                    class="h-5 w-5 text-gray-400"
+                                                                />
+                                                            {/if}
+                                                            <span
+                                                                class="text-gray-700"
+                                                            >
+                                                                {#if post.user?.display_name && post.user.display_name.trim() !== ""}
+                                                                    {post.user
+                                                                        .display_name}
+                                                                    {#if post.user?.username && post.user.username.trim() !== ""}
+                                                                        {@html ` (<a href=\"https://x.com/${post.user.username}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-indigo-600 hover:underline\">@${post.user.username}</a>)`}
+                                                                    {/if}
+                                                                {:else if post.user?.username && post.user.username.trim() !== ""}
+                                                                    {@html `<a href=\"https://x.com/${post.user.username}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-indigo-600 hover:underline\">@${post.user.username}</a>`}
+                                                                {/if}
+                                                            </span>
+                                                            {#if canEdit(post)}
+                                                                <button
+                                                                    on:click={() =>
+                                                                        openActionModal(
+                                                                            post,
+                                                                        )}
+                                                                    title="設定"
+                                                                >
+                                                                    <Settings
+                                                                        class="inline h-5 w-5 ml-1 text-gray-500 hover:text-indigo-600"
+                                                                    />
+                                                                </button>
+                                                            {/if}
+                                                        </div>
+                                                        <!-- 説明 -->
+                                                        {#if post.description && post.description.trim() !== ""}
+                                                            <div
+                                                                class="text-sm text-gray-600 break-all mt-1"
+                                                            >
+                                                                {post.description}
+                                                            </div>
                                                         {/if}
                                                     </div>
-                                                </div>
-
-                                                <!-- 説明 -->
-                                                {#if post.description && post.description.trim() !== ""}
+                                                {:else}
+                                                    <!-- 未公開記事 -->
                                                     <div
-                                                        class="text-sm text-gray-600 break-all"
+                                                        class="mb-2 border-b border-gray-200 pb-2 last:border-b-0 last:pb-0"
                                                     >
-                                                        {post.description}
+                                                        <span
+                                                            class="text-gray-400 font-medium text-base"
+                                                            >？？？</span
+                                                        >
+                                                        <div
+                                                            class="flex items-center space-x-1"
+                                                        >
+                                                            <span
+                                                                class="text-gray-400"
+                                                                >by</span
+                                                            >
+                                                            <User
+                                                                class="h-5 w-5 text-gray-300"
+                                                            />
+                                                            <span
+                                                                class="text-gray-400"
+                                                                >？？？</span
+                                                            >
+                                                        </div>
                                                     </div>
                                                 {/if}
-                                            {:else}
-                                                <!-- 未公開記事 -->
-                                                <div class="mb-1">
-                                                    <span
-                                                        class="text-gray-400 font-medium text-base"
-                                                        >？？？</span
-                                                    >
-                                                </div>
-                                                <div
-                                                    class="flex items-center space-x-1"
-                                                >
-                                                    <span class="text-gray-400"
-                                                        >by</span
-                                                    >
-                                                    <User
-                                                        class="h-5 w-5 text-gray-300"
-                                                    />
-                                                    <span class="text-gray-400"
-                                                        >？？？</span
-                                                    >
-                                                </div>
-                                            {/if}
+                                            {/each}
                                         {:else}
-                                            <!-- 未登録日 -->
-                                            {#if $user}
-                                                <button
-                                                    class="px-2 py-1 text-sm bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-                                                    on:click={() =>
-                                                        handleReservePost(
-                                                            dateStr,
-                                                        )}
-                                                >
-                                                    登録
-                                                </button>
-                                            {:else}
-                                                <div class="text-gray-300">
-                                                    未定
-                                                </div>
-                                            {/if}
+                                            <div class="text-gray-300">
+                                                記事なし
+                                            </div>
                                         {/if}
                                     </td>
                                 </tr>
@@ -785,11 +797,9 @@
                                         >日付を選択してください</option
                                     >
                                     {#each calendarDates as dateStr}
-                                        {#if !$posts.find((p) => p.post_date === dateStr)}
-                                            <option value={dateStr}
-                                                >{formatDate(dateStr)}</option
-                                            >
-                                        {/if}
+                                        <option value={dateStr}
+                                            >{formatDate(dateStr)}</option
+                                        >
                                     {/each}
                                 </select>
                             </div>

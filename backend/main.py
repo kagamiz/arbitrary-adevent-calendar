@@ -244,25 +244,25 @@ async def get_public_posts(db: Session = Depends(get_db)):
         if post.is_public:
             result.append(
                 PostPublic(
-                    id=post.id,
+                    id=int(post.id),
                     post_date=post.post_date,
-                    title=post.title,
-                    url=post.url,
-                    description=post.description,
+                    title=str(post.title),
+                    url=str(post.url),
+                    description=str(post.description)
+                    if post.description is not None
+                    else None,
                     user=post.user,
-                    is_public=True,
                 )
             )
         else:
             result.append(
                 PostPublic(
-                    id=post.id,
+                    id=int(post.id),
                     post_date=post.post_date,
                     title="？？？",
                     url="",
                     description="？？？",
                     user=None,
-                    is_public=False,
                 )
             )
     return result
@@ -281,13 +281,6 @@ async def create_post(
         or post.post_date > settings.calendar_end_date
     ):
         raise HTTPException(status_code=400, detail="投稿日がカレンダー期間外です")
-
-    # 既にその日に投稿があるかチェック
-    existing_post = db.query(Post).filter(Post.post_date == post.post_date).first()
-    if existing_post:
-        raise HTTPException(
-            status_code=400, detail="その日は既に投稿が予約されています"
-        )
 
     db_post = Post(**post.dict(), user_id=current_user.id)
     db.add(db_post)
@@ -312,15 +305,6 @@ async def reserve_post(
 
     # トランザクションを使用して競合状態を防ぐ
     try:
-        # 既にその日に投稿があるかチェック
-        existing_post = (
-            db.query(Post).filter(Post.post_date == post_reserve.post_date).first()
-        )
-        if existing_post:
-            raise HTTPException(
-                status_code=400, detail="その日は既に投稿が予約されています"
-            )
-
         # 空の記事情報で投稿を作成
         db_post = Post(
             post_date=post_reserve.post_date,
@@ -513,11 +497,11 @@ async def pre_register_post(
         raise HTTPException(status_code=400, detail="投稿日がカレンダー期間外です")
 
     # 既にその日に投稿があるかチェック
-    existing_post = db.query(Post).filter(Post.post_date == post_date_obj).first()
-    if existing_post:
-        raise HTTPException(
-            status_code=400, detail="その日は既に投稿が予約されています"
-        )
+    # existing_post = db.query(Post).filter(Post.post_date == post_date_obj).first()
+    # if existing_post:
+    #     raise HTTPException(
+    #         status_code=400, detail="その日は既に投稿が予約されています"
+    #     )
     user = db.query(User).filter(User.username == pre_register.username).first()
     if not user:
         is_admin = is_admin_user(pre_register.username)
@@ -533,8 +517,8 @@ async def pre_register_post(
     # 既存ユーザーがいる場合は情報を更新
     try:
         twitter_profile_info = get_twitter_profile_info(pre_register.username)
-        user.display_name = twitter_profile_info["display_name"]
-        user.profile_image_url = twitter_profile_info["profile_image_url"]
+        user.display_name = twitter_profile_info["display_name"] or ""
+        user.profile_image_url = twitter_profile_info["profile_image_url"] or ""
         user.is_admin = is_admin_user(pre_register.username)
         db.commit()
         db.refresh(user)
