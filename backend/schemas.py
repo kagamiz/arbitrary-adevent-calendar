@@ -69,14 +69,17 @@ class Post(BaseModel):
     @property
     def is_public(self) -> bool:
         JST = timezone(timedelta(hours=9))
-        now = datetime.now(JST).date()
+        now = datetime.now(JST)
+        publish_time = datetime.combine(
+            self.post_date, datetime.min.time().replace(hour=22), tzinfo=JST
+        )
         return (
             self.user_id is not None
-            and self.title
+            and self.title is not None
             and self.title.strip() != ""
-            and self.url
+            and self.url is not None
             and self.url.strip() != ""
-            and self.post_date <= now
+            and now >= publish_time
         )
 
     class Config:
